@@ -2,9 +2,11 @@ name: conformance-drift-monitor
 
 on:
   schedule:
-    # Daily 08:00 UTC = 03:00 America/New_York during EDT (04:00 during EST —
-    # GitHub cron is UTC-only, so the local time shifts with DST).
-    - cron: '0 8 * * *'
+    # Daily 07:00 UTC = 03:00 America/New_York during EDT (02:00 during EST).
+    # GitHub cron is UTC-only and does not track DST, so the wall-clock time
+    # shifts by an hour across the DST boundary; this targets the 03:00 ET run
+    # for the EDT half of the year.
+    - cron: '0 7 * * *'
   workflow_dispatch:
 
 permissions:
@@ -54,4 +56,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add product-registry.md
           git commit -m "chore: update conformance registry ($(date -u +%F))"
-          git push
+          # main may have moved while the scan ran (a merge, or a concurrent
+          # run). Rebase the registry commit onto the latest tip and retry so a
+          # non-fast-forward push doesn't silently drop the update.
+          branch="${GITHUB_REF_NAME:-main}"
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:$branch"; then exit 0; fi
+            echo "push rejected (attempt $attempt) — rebasing on origin/$branch and retrying"
+            git pull --rebase origin "$branch"
+          done
+          echo "::error::could not push registry update after 3 attempts"
+          exit 1
