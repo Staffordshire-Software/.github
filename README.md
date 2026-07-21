@@ -48,6 +48,9 @@ The script (requires an authenticated `gh` CLI):
   - The monitor uses the `DRIFT_MONITOR_TOKEN` secret (an org-read PAT) to see
     private repos; without it, it falls back to the default workflow token and
     only sees this repo.
+  - Non-product repos (currently just `core`) are excluded from the scan via
+    the `IGNORE_REPOS` env in the workflow, so they are never flagged as
+    unregistered.
 
 ## Tests
 

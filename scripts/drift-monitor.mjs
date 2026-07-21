@@ -81,10 +81,21 @@ export function setConformance(markdown, repo, emoji) {
 }
 
 // A row appended by the monitor itself, with `?` metadata that no one has
-// filled in yet. Such rows stay `🔴 unregistered` until product key /
-// category / status are completed by a human.
+// filled in yet. Such rows stay `🔴 unregistered` until product key,
+// category, AND status are all completed by a human.
 export function isPlaceholderRow(row) {
-  return row.productKey === '?';
+  return [row.productKey, row.category, row.status].includes('?');
+}
+
+// Comma-separated list of org repos the monitor should skip entirely —
+// non-product repos (e.g. `core`) that intentionally have no registry row.
+export function parseIgnoreList(value) {
+  return new Set(
+    (value ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
 }
 
 // Append a row for a repo that exists in the org but not in the registry.
@@ -276,6 +287,7 @@ async function main() {
   const org = process.env.ORG || 'Staffordshire-Software';
   const metaRepo = process.env.META_REPO || '.github';
   const registryPath = process.env.REGISTRY_PATH || 'product-registry.md';
+  const ignoreRepos = parseIgnoreList(process.env.IGNORE_REPOS);
   const dryRun = process.env.DRY_RUN === '1';
   const dateStr = new Date().toISOString().slice(0, 10);
 
@@ -287,7 +299,7 @@ async function main() {
 
   const entries = [];
   for (const r of repos) {
-    if (r.name === metaRepo) continue;
+    if (r.name === metaRepo || ignoreRepos.has(r.name)) continue;
     const entry = await scanRepo(token, org, r.name);
     entries.push(entry);
     const row = rowsByRepo.get(r.name);

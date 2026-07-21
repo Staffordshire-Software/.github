@@ -9,6 +9,7 @@ import {
   computeEmoji,
   buildReportBody,
   isPlaceholderRow,
+  parseIgnoreList,
 } from '../scripts/drift-monitor.mjs';
 
 const SAMPLE = `# StaffySoft Product Registry
@@ -116,9 +117,18 @@ test('computeEmoji: invalid check levels are red, never green', () => {
   );
 });
 
-test('isPlaceholderRow flags monitor-appended rows with unfilled metadata', () => {
-  assert.equal(isPlaceholderRow({ repo: 'x', productKey: '?' }), true);
-  assert.equal(isPlaceholderRow({ repo: 'x', productKey: 'x' }), false);
+test('isPlaceholderRow flags any unfilled metadata column, not just product key', () => {
+  const filled = { repo: 'x', productKey: 'x', category: 'OSS', status: 'Live' };
+  assert.equal(isPlaceholderRow(filled), false);
+  assert.equal(isPlaceholderRow({ ...filled, productKey: '?' }), true);
+  assert.equal(isPlaceholderRow({ ...filled, category: '?' }), true);
+  assert.equal(isPlaceholderRow({ ...filled, status: '?' }), true);
+});
+
+test('parseIgnoreList splits, trims, and drops empties', () => {
+  assert.deepEqual([...parseIgnoreList('core, infra ,')], ['core', 'infra']);
+  assert.deepEqual([...parseIgnoreList('')], []);
+  assert.deepEqual([...parseIgnoreList(undefined)], []);
 });
 
 test('computeEmoji: any non-success conclusion is red, including no runs at all', () => {
