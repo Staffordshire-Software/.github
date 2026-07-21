@@ -48,6 +48,9 @@ DESCRIPTION="$3"
 [[ "$SLUG" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || err "repo slug '$SLUG' must be lowercase alphanumeric with dots/dashes"
 [[ "$PRODUCT_KEY" =~ ^[a-z0-9][a-z0-9-]*$ ]] || err "product key '$PRODUCT_KEY' must be lowercase alphanumeric with dashes"
 [ -n "$DESCRIPTION" ] || err "description must not be empty"
+case "$DESCRIPTION" in
+  *$'\n'*|*$'\r'*) err "description must be a single line" ;;
+esac
 
 command -v gh >/dev/null || err "gh CLI is required (https://cli.github.com)"
 command -v git >/dev/null || err "git is required"
@@ -140,7 +143,9 @@ step "Registering in product-registry.md"
 # sweep unrelated changes into the registry commit.
 META_BRANCH="$(git -C "$META_ROOT" rev-parse --abbrev-ref HEAD)"
 META_DIRTY="$(git -C "$META_ROOT" status --porcelain --untracked-files=no)"
-if grep -q "^| \[$SLUG\]" "$REGISTRY"; then
+# Fixed-string match — slugs may contain dots, which grep would otherwise
+# treat as regex wildcards.
+if grep -qF "| [$SLUG](" "$REGISTRY"; then
   echo "  $SLUG already registered — skipping"
 else
   # Append the row directly after the last table row.

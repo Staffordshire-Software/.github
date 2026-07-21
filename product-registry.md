@@ -9,6 +9,9 @@ Canonical list of every StaffySoft product repo. New rows are appended by
 - 🟡 — workflow green but checks still at `warned` (warned drift)
 - 🔴 — config or workflow missing, or failing on `main` (required drift)
 
+Rows the monitor appends for unregistered repos carry `?` metadata and stay
+`🔴 unregistered` until a human fills in the product key, category, and status.
+
 **Categories:** Shipped/Paid, Shipped/Beta, In development, Marketing/Landing, OSS, Held.
 **Statuses:** Live, Beta, In development, Held, Archived.
 

@@ -8,6 +8,7 @@ import {
   parseConformanceConfig,
   computeEmoji,
   buildReportBody,
+  isPlaceholderRow,
 } from '../scripts/drift-monitor.mjs';
 
 const SAMPLE = `# StaffySoft Product Registry
@@ -78,6 +79,17 @@ test('parseConformanceConfig reads the flat checks block', () => {
   );
   assert.deepEqual(cfg, {
     checks: { auth_via_core_client: 'warned', sentry_wired: 'required' },
+    invalid: {},
+  });
+});
+
+test('parseConformanceConfig collects unknown levels as invalid', () => {
+  const cfg = parseConformanceConfig(
+    'checks:\n  a: requireded\n  b: required\n  c: bogus\n',
+  );
+  assert.deepEqual(cfg, {
+    checks: { b: 'required' },
+    invalid: { a: 'requireded', c: 'bogus' },
   });
 });
 
@@ -91,6 +103,22 @@ test('computeEmoji: missing config or workflow, or failing main, is red', () => 
   assert.equal(computeEmoji({ config: null, workflowPresent: true, latestConclusion: 'success' }), '🔴');
   assert.equal(computeEmoji({ config, workflowPresent: false, latestConclusion: null }), '🔴');
   assert.equal(computeEmoji({ config, workflowPresent: true, latestConclusion: 'failure' }), '🔴');
+});
+
+test('computeEmoji: invalid check levels are red, never green', () => {
+  assert.equal(
+    computeEmoji({
+      config: { checks: { b: 'required' }, invalid: { a: 'requireded' } },
+      workflowPresent: true,
+      latestConclusion: 'success',
+    }),
+    '🔴',
+  );
+});
+
+test('isPlaceholderRow flags monitor-appended rows with unfilled metadata', () => {
+  assert.equal(isPlaceholderRow({ repo: 'x', productKey: '?' }), true);
+  assert.equal(isPlaceholderRow({ repo: 'x', productKey: 'x' }), false);
 });
 
 test('computeEmoji: any non-success conclusion is red, including no runs at all', () => {

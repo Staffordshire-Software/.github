@@ -80,6 +80,13 @@ export function setConformance(markdown, repo, emoji) {
   return lines.join('\n');
 }
 
+// A row appended by the monitor itself, with `?` metadata that no one has
+// filled in yet. Such rows stay `🔴 unregistered` until product key /
+// category / status are completed by a human.
+export function isPlaceholderRow(row) {
+  return row.productKey === '?';
+}
+
 // Append a row for a repo that exists in the org but not in the registry.
 export function appendUnregistered(markdown, org, repo) {
   const lines = markdown.split('\n');
@@ -95,28 +102,39 @@ export function appendUnregistered(markdown, org, repo) {
 }
 
 // Minimal parser for the flat `checks:` block of .platform-conformance.yml.
+// Unknown levels are collected in `invalid` so they surface as drift instead
+// of silently passing as 🟢.
 // TODO: sync from core#53 once the canonical schema/parser lands.
+export const CHECK_LEVELS = ['required', 'warned', 'exempt'];
+
 export function parseConformanceConfig(yamlText) {
   const lines = yamlText.split('\n');
   const start = lines.findIndex((l) => /^checks:\s*$/.test(l));
   if (start === -1) return null;
   const checks = {};
+  const invalid = {};
   for (let i = start + 1; i < lines.length; i++) {
     const line = lines[i];
     if (!/^\s+\S/.test(line)) break;
     const m = line.match(/^\s+([A-Za-z0-9_]+):\s*([A-Za-z]+)/);
-    if (m) checks[m[1]] = m[2];
+    if (!m) continue;
+    const [, key, level] = m;
+    if (CHECK_LEVELS.includes(level)) checks[key] = level;
+    else invalid[key] = level;
   }
-  return Object.keys(checks).length ? { checks } : null;
+  const total = Object.keys(checks).length + Object.keys(invalid).length;
+  return total ? { checks, invalid } : null;
 }
 
-// 🔴 config or workflow missing, or the latest run on main did not succeed
-//    (failure, cancelled, timed_out, action_required, still running, or no
-//    runs at all — anything but an explicit `success` is drift).
+// 🔴 config missing/invalid (including unknown check levels), workflow
+//    missing, or the latest run on main did not succeed (failure, cancelled,
+//    timed_out, action_required, still running, or no runs at all — anything
+//    but an explicit `success` is drift).
 // 🟡 workflow green but some checks still `warned` (warned drift).
 // 🟢 workflow green and every check `required` (or `exempt`).
 export function computeEmoji({ config, workflowPresent, latestConclusion }) {
   if (!config) return '🔴';
+  if (Object.keys(config.invalid ?? {}).length > 0) return '🔴';
   if (!workflowPresent) return '🔴';
   if (latestConclusion !== 'success') return '🔴';
   const levels = Object.values(config.checks);
@@ -204,17 +222,20 @@ async function scanRepo(token, org, repo) {
 
   const emoji = computeEmoji({ config, workflowPresent, latestConclusion });
   // Keep this chain aligned with computeEmoji: same conditions, same order.
+  const invalidKeys = Object.keys(config?.invalid ?? {});
   const reason = !configText
     ? '.platform-conformance.yml missing'
     : !config
       ? '.platform-conformance.yml has no valid checks block'
-      : !workflowPresent
-        ? 'platform-conformance workflow missing'
-        : latestConclusion !== 'success'
-          ? `platform-conformance not passing on main (latest: ${latestConclusion ?? 'no runs'})`
-          : emoji === '🟡'
-            ? 'warned drift (checks still at `warned`)'
-            : 'clean';
+      : invalidKeys.length > 0
+        ? `invalid check level(s) in .platform-conformance.yml: ${invalidKeys.join(', ')}`
+        : !workflowPresent
+          ? 'platform-conformance workflow missing'
+          : latestConclusion !== 'success'
+            ? `platform-conformance not passing on main (latest: ${latestConclusion ?? 'no runs'})`
+            : emoji === '🟡'
+              ? 'warned drift (checks still at `warned`)'
+              : 'clean';
   return { org, repo, emoji, reason };
 }
 
@@ -262,20 +283,25 @@ async function main() {
   console.log(`Scanning ${repos.length} non-archived repos in ${org}...`);
 
   let registry = readFileSync(registryPath, 'utf8');
-  const registered = new Set(parseRegistry(registry).map((r) => r.repo));
+  const rowsByRepo = new Map(parseRegistry(registry).map((r) => [r.repo, r]));
 
   const entries = [];
   for (const r of repos) {
     if (r.name === metaRepo) continue;
     const entry = await scanRepo(token, org, r.name);
     entries.push(entry);
-    if (registered.has(r.name)) {
+    const row = rowsByRepo.get(r.name);
+    if (row && !isPlaceholderRow(row)) {
       registry = setConformance(registry, r.name, entry.emoji);
     } else {
+      // Missing row, or a placeholder row from an earlier run whose metadata
+      // was never filled in — either way it stays flagged as unregistered.
       console.log(`Unregistered repo found: ${r.name}`);
       registry = appendUnregistered(registry, org, r.name);
       entry.emoji = '🔴 unregistered';
-      entry.reason += ' (not in product-registry.md)';
+      entry.reason += row
+        ? ' (registry row has placeholder metadata — fill in product key/category/status)'
+        : ' (not in product-registry.md)';
     }
     console.log(`  ${entry.emoji} ${r.name}: ${entry.reason}`);
   }
