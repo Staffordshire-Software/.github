@@ -108,6 +108,17 @@ if env PATH="$TMP/bin:$PATH" \
 else
   echo "  ok: script rejects control characters in the description"
 fi
+# printf the raw UTF-8 bytes for U+2028 (E2 80 A8) — portable across bash versions.
+if env PATH="$TMP/bin:$PATH" \
+    LOG_DIR="$LOG_DIR" FAKE_REMOTES="$FAKE_REMOTES" \
+    BOOTSTRAP_ORG="TestOrg" BOOTSTRAP_WORKDIR="$TMP/work/u2028-app" \
+    bash "$TMP/meta/scripts/new-product-repo.sh" \
+    u2028-app u2028-key "$(printf 'bad\xe2\x80\xa8sep')" >/dev/null 2>&1; then
+  echo "  FAIL: script accepted a description containing U+2028"
+  FAILURES=$((FAILURES + 1))
+else
+  echo "  ok: script rejects Unicode line separators in the description"
+fi
 
 # --- assertions -------------------------------------------------------------
 echo "Asserting on the pushed product repo..."

@@ -61,6 +61,13 @@ command -v node >/dev/null || err "node is required (used to parse product-regis
 command -v npm >/dev/null || err "npm is required"
 gh auth status >/dev/null 2>&1 || err "gh is not authenticated — run 'gh auth login'"
 
+# U+2028 / U+2029 are Unicode line/paragraph separators: legal in JSON but
+# historic JS string-literal line terminators, so they can break the generated
+# .tsx string literals. `[[:cntrl:]]` above doesn't catch them and a portable
+# bash match for multibyte characters is fragile, so use node (required above).
+node -e 'process.exit(/[\u2028\u2029]/.test(process.argv[1]) ? 1 : 0)' "$DESCRIPTION" \
+  || err "description must not contain Unicode line separators (U+2028 / U+2029)"
+
 # Resolve the meta repo root (this script lives in <meta>/scripts/).
 META_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE_DIR="$META_ROOT/templates/product-repo"
