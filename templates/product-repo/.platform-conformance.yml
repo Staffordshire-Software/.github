@@ -1,0 +1,47 @@
+# Platform Conformance configuration for {{REPO_SLUG}}
+#
+# TODO: sync from core#53 — the canonical schema is defined by
+# https://github.com/Staffordshire-Software/core/issues/53. Until that lands,
+# this file follows the draft shape below. Field semantics:
+#
+#   required — drift on this check fails the platform-conformance workflow (🔴)
+#   warned   — drift is reported as a warning but does not block merge (🟡)
+#   exempt   — check is skipped for this repo (justify in the comment)
+#
+# MVP-push default: every check starts at `warned`. Ratchet checks to
+# `required` as the product hardens. See DEFINITION_OF_DONE.md in
+# Staffordshire-Software/.github for what each check means.
+
+version: 1
+
+product:
+  key: "{{PRODUCT_KEY}}"
+  repo: "{{ORG}}/{{REPO_SLUG}}"
+  description: "{{DESCRIPTION}}"
+
+checks:
+  auth_via_core_client: warned        # DoD §1 — auth through @staffysoft/core-client
+  entitlements_via_core: warned       # DoD §2 — getEntitlements(), fail closed
+  no_committed_secrets: warned        # DoD §3 — secrets in Vercel env / 1Password only
+  dependabot_enabled: warned          # DoD §3 — Dependabot for npm + Actions
+  security_headers: warned            # DoD §3 — CSP, HSTS, X-Frame-Options, Referrer-Policy
+  rate_limiting: warned               # DoD §3 — auth + write endpoints
+  sentry_wired: warned                # DoD §4 — errors to Sentry
+  health_endpoint: warned             # DoD §4 — /api/health covers DB + core
+  reversible_migrations: warned       # DoD §4 — every migration documents rollback
+  audit_log: warned                   # DoD §3 — audit log for billing/admin/entitlement changes
+  uptime_monitor: warned              # DoD §4 — uptime monitor pinging /api/health
+  analytics_via_core: warned          # DoD §5 — trackEvent through core
+  legal_pages: warned                 # DoD §6 — Privacy Policy + ToS, linked in footer
+  gdpr_export_delete: warned          # DoD §6 — GDPR data export + delete via core SDK
+  support_inbox: warned               # DoD §6 — support routed to a human-read inbox
+  ci_required_checks: warned          # DoD §7 — typecheck, lint, test, build on every PR
+  preview_deploys: warned             # DoD §7 — Vercel preview deploy per PR
+  mobile_responsive: warned           # DoD §8 — phone-first responsive
+  async_states: warned                # DoD §8 — empty / loading / error states everywhere
+  accessibility_aa: warned            # DoD §8 — WCAG AA contrast + keyboard nav
+  seo_basics: warned                  # DoD §8 — title, meta, OG, sitemap.xml, robots.txt
+  docs_complete: warned               # DoD §9 — README, ADRs, RUNBOOK
+  data_export: warned                 # DoD §10 — export all user data as one archive
+  core_only_coupling: warned          # DoD §10 — cross-app coupling only via core-client
+  no_staffysoft_branding_in_db: warned # DoD §10 — no StaffySoft branding in schemas/data

@@ -4,6 +4,7 @@ A small portfolio of focused web apps, sharing one auth and billing core so each
 
 - **[staffordshire-software/core](https://github.com/Staffordshire-Software/core)** — auth, billing, entitlements, analytics. Every other app is a client of this.
 - **Definition of Done** for any commercially deployed repo: [DEFINITION_OF_DONE.md](./DEFINITION_OF_DONE.md)
+- **Product registry** — canonical list of every product repo, with daily-updated conformance status: [product-registry.md](https://github.com/Staffordshire-Software/.github/blob/main/product-registry.md). New repos start from [`scripts/new-product-repo.sh`](https://github.com/Staffordshire-Software/.github/blob/main/scripts/new-product-repo.sh).
 
 ## Standards
 
