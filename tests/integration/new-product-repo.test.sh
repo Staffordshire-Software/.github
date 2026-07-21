@@ -134,8 +134,8 @@ echo "Asserting on branch protection call..."
 check "gh api called on branches/main/protection" \
   grep -q 'api repos/TestOrg/demo-app/branches/main/protection' "$LOG_DIR/gh-calls.log"
 check "protection call used PUT" grep -q -- '--method PUT' "$LOG_DIR/gh-calls.log"
-check "protection requires platform-conformance check" \
-  grep -q '"contexts": \["platform-conformance"\]' "$LOG_DIR/gh-api-input.log"
+check "protection requires platform-conformance + all four CI checks" \
+  grep -q '"contexts": \["platform-conformance", "lint", "typecheck", "test", "build"\]' "$LOG_DIR/gh-api-input.log"
 check "protection disallows force pushes" \
   grep -q '"allow_force_pushes": false' "$LOG_DIR/gh-api-input.log"
 check "protection requires a review" \

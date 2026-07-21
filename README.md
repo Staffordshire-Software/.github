@@ -28,8 +28,9 @@ The script (requires an authenticated `gh` CLI):
    substituting the slug, product key, and description.
 3. Runs `npm install`, commits as
    `chore: bootstrap StaffySoft product repo`, and pushes `main`.
-4. Applies branch protection: `platform-conformance` check required, one review
-   required, force-push disallowed.
+4. Applies branch protection: `platform-conformance` plus the four CI checks
+   (`lint`, `typecheck`, `test`, `build`) required, one review required,
+   force-push disallowed.
 5. Registers the repo in [`product-registry.md`](./product-registry.md).
 
 ## Platform Conformance

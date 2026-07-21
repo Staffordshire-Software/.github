@@ -16,8 +16,8 @@
 #   4. npm install (locks the vitest scaffold in place).
 #   5. Commits as "chore: bootstrap StaffySoft product repo" (author Dan O'Dea)
 #      and pushes main.
-#   6. Applies branch protection: platform-conformance required, review
-#      required, force-push disallowed.
+#   6. Applies branch protection: platform-conformance + lint/typecheck/
+#      test/build required, review required, force-push disallowed.
 #   7. Registers the repo in product-registry.md and pushes that too.
 #
 # Environment overrides (mainly for tests):
@@ -120,14 +120,18 @@ git -C "$WORK_DIR" \
 git -C "$WORK_DIR" push -u origin main
 
 step "Applying branch protection on main"
-# platform-conformance required, 1 review required, no force-push.
+# platform-conformance + all four CI checks required (DoD §7), 1 review
+# required, no force-push. enforce_admins stays false on purpose: with a
+# 1-review requirement and a single human in the org, the admin bypass is
+# the only way a solo founder can merge at all — it is the documented
+# escape hatch, not an oversight.
 gh api "repos/$ORG/$SLUG/branches/main/protection" \
   --method PUT \
   --input - <<'JSON'
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["platform-conformance"]
+    "contexts": ["platform-conformance", "lint", "typecheck", "test", "build"]
   },
   "enforce_admins": false,
   "required_pull_request_reviews": {
