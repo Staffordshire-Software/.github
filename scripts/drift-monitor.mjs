@@ -119,6 +119,39 @@ export function appendUnregistered(markdown, org, repo) {
 // TODO: sync from core#53 once the canonical schema/parser lands.
 export const CHECK_LEVELS = ['required', 'warned', 'exempt'];
 
+// The full DoD checklist every product repo must declare. A repo that drops
+// one of these (e.g. deletes `auth_via_core_client`) is drift even if the
+// keys it kept are all `required` — otherwise the mechanism could be bypassed
+// by removing a check rather than failing it.
+// TODO: sync from core#53 once the canonical checklist lands.
+export const EXPECTED_CHECKS = [
+  'auth_via_core_client',
+  'entitlements_via_core',
+  'no_committed_secrets',
+  'dependabot_enabled',
+  'security_headers',
+  'rate_limiting',
+  'sentry_wired',
+  'health_endpoint',
+  'reversible_migrations',
+  'analytics_via_core',
+  'ci_required_checks',
+  'mobile_responsive',
+  'accessibility_aa',
+  'docs_complete',
+];
+
+// Expected checklist keys absent from a parsed config (declared under any
+// level counts as present; the level itself is validated separately).
+export function missingExpectedChecks(config, expected = EXPECTED_CHECKS) {
+  if (!config) return [...expected];
+  const declared = new Set([
+    ...Object.keys(config.checks),
+    ...Object.keys(config.invalid ?? {}),
+  ]);
+  return expected.filter((k) => !declared.has(k));
+}
+
 export function parseConformanceConfig(yamlText) {
   const lines = yamlText.split('\n');
   const start = lines.findIndex((l) => /^checks:\s*$/.test(l));
@@ -141,15 +174,23 @@ export function parseConformanceConfig(yamlText) {
   return total ? { checks, invalid } : null;
 }
 
-// 🔴 config missing/invalid (including unknown check levels), workflow
-//    missing, or the latest run on main did not succeed (failure, cancelled,
-//    timed_out, action_required, still running, or no runs at all — anything
-//    but an explicit `success` is drift).
+// 🔴 config missing/invalid (unknown level or a missing expected check),
+//    workflow missing, or the latest run on main did not succeed (failure,
+//    cancelled, timed_out, action_required, still running, or no runs at all
+//    — anything but an explicit `success` is drift).
 // 🟡 workflow green but some checks still `warned` (warned drift).
-// 🟢 workflow green and every check `required` (or `exempt`).
-export function computeEmoji({ config, workflowPresent, latestConclusion }) {
+// 🟢 workflow green and every expected check declared `required` (or `exempt`).
+// `expectedChecks` defaults to [] so the pure helper stays testable in
+// isolation; scanRepo passes EXPECTED_CHECKS for real scans.
+export function computeEmoji({
+  config,
+  workflowPresent,
+  latestConclusion,
+  expectedChecks = [],
+}) {
   if (!config) return '🔴';
   if (Object.keys(config.invalid ?? {}).length > 0) return '🔴';
+  if (missingExpectedChecks(config, expectedChecks).length > 0) return '🔴';
   if (!workflowPresent) return '🔴';
   if (latestConclusion !== 'success') return '🔴';
   const levels = Object.values(config.checks);
@@ -235,21 +276,29 @@ async function scanRepo(token, org, repo) {
   const workflowPresent = runs !== null;
   const latestConclusion = runs?.workflow_runs?.[0]?.conclusion ?? null;
 
-  const emoji = computeEmoji({ config, workflowPresent, latestConclusion });
+  const emoji = computeEmoji({
+    config,
+    workflowPresent,
+    latestConclusion,
+    expectedChecks: EXPECTED_CHECKS,
+  });
   // Keep this chain aligned with computeEmoji: same conditions, same order.
   const invalidKeys = Object.keys(config?.invalid ?? {});
+  const missingKeys = config ? missingExpectedChecks(config) : [];
   const reason = !configText
     ? '.platform-conformance.yml missing'
     : !config
       ? '.platform-conformance.yml has no valid checks block'
       : invalidKeys.length > 0
         ? `invalid check level(s) in .platform-conformance.yml: ${invalidKeys.join(', ')}`
-        : !workflowPresent
-          ? 'platform-conformance workflow missing'
-          : latestConclusion !== 'success'
-            ? `platform-conformance not passing on main (latest: ${latestConclusion ?? 'no runs'})`
-            : emoji === '🟡'
-              ? 'warned drift (checks still at `warned`)'
+        : missingKeys.length > 0
+          ? `missing required conformance check(s): ${missingKeys.join(', ')}`
+          : !workflowPresent
+            ? 'platform-conformance workflow missing'
+            : latestConclusion !== 'success'
+              ? `platform-conformance not passing on main (latest: ${latestConclusion ?? 'no runs'})`
+              : emoji === '🟡'
+                ? 'warned drift (checks still at `warned`)'
               : 'clean';
   return { org, repo, emoji, reason };
 }

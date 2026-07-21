@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   parseRegistry,
   repoNameFromCell,
@@ -11,7 +12,15 @@ import {
   isPlaceholderRow,
   parseIgnoreList,
   findRecentDriftIssue,
+  EXPECTED_CHECKS,
+  missingExpectedChecks,
 } from '../scripts/drift-monitor.mjs';
+
+// A config declaring every expected check at `required` — the green baseline.
+const fullConfig = () => ({
+  checks: Object.fromEntries(EXPECTED_CHECKS.map((k) => [k, 'required'])),
+  invalid: {},
+});
 
 const SAMPLE = `# StaffySoft Product Registry
 
@@ -199,6 +208,59 @@ test('computeEmoji: warned drift is yellow, all-required clean is green', () => 
       latestConclusion: 'success',
     }),
     '🟢',
+  );
+});
+
+test('missingExpectedChecks lists absent checklist keys (any level counts as present)', () => {
+  assert.deepEqual(missingExpectedChecks(fullConfig()), []);
+  assert.deepEqual(missingExpectedChecks(null), [...EXPECTED_CHECKS]);
+  const partial = fullConfig();
+  delete partial.checks.auth_via_core_client;
+  assert.deepEqual(missingExpectedChecks(partial), ['auth_via_core_client']);
+  // A key declared with an invalid level still counts as declared (the
+  // invalid level is caught separately).
+  const withInvalid = fullConfig();
+  delete withInvalid.checks.docs_complete;
+  withInvalid.invalid.docs_complete = 'bogus';
+  assert.deepEqual(missingExpectedChecks(withInvalid), []);
+});
+
+test('computeEmoji: a repo missing an expected check is red even when green otherwise', () => {
+  const partial = fullConfig();
+  delete partial.checks.sentry_wired;
+  assert.equal(
+    computeEmoji({
+      config: partial,
+      workflowPresent: true,
+      latestConclusion: 'success',
+      expectedChecks: EXPECTED_CHECKS,
+    }),
+    '🔴',
+  );
+});
+
+test('computeEmoji: full expected checklist, all required, workflow green is green', () => {
+  assert.equal(
+    computeEmoji({
+      config: fullConfig(),
+      workflowPresent: true,
+      latestConclusion: 'success',
+      expectedChecks: EXPECTED_CHECKS,
+    }),
+    '🟢',
+  );
+});
+
+test('EXPECTED_CHECKS matches the shipped template .platform-conformance.yml', () => {
+  const yaml = readFileSync(
+    new URL('../templates/product-repo/.platform-conformance.yml', import.meta.url),
+    'utf8',
+  );
+  const declared = parseConformanceConfig(yaml);
+  assert.deepEqual(
+    [...EXPECTED_CHECKS].sort(),
+    Object.keys(declared.checks).sort(),
+    'template must declare exactly the expected checklist',
   );
 });
 

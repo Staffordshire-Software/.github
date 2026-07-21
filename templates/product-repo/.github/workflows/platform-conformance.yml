@@ -36,6 +36,15 @@ jobs:
 
           const text = fs.readFileSync(CONFIG, 'utf8');
           const LEVELS = ['required', 'warned', 'exempt'];
+          // Every product repo must declare the full DoD checklist. Dropping a
+          // key (rather than failing it) must not satisfy this gate.
+          // TODO: sync from core#53 once the canonical checklist lands.
+          const EXPECTED = [
+            'auth_via_core_client', 'entitlements_via_core', 'no_committed_secrets',
+            'dependabot_enabled', 'security_headers', 'rate_limiting', 'sentry_wired',
+            'health_endpoint', 'reversible_migrations', 'analytics_via_core',
+            'ci_required_checks', 'mobile_responsive', 'accessibility_aa', 'docs_complete',
+          ];
 
           // Minimal parse of the flat `checks:` block — one `key: level` pair
           // per line. The canonical parser arrives with core#53.
@@ -65,6 +74,12 @@ jobs:
           if (invalid) process.exit(1);
           if (Object.keys(checks).length === 0) {
             console.error('::error::`checks:` block is empty in .platform-conformance.yml');
+            process.exit(1);
+          }
+
+          const missing = EXPECTED.filter((k) => !(k in checks));
+          if (missing.length > 0) {
+            console.error(`::error::.platform-conformance.yml is missing required checks: ${missing.join(', ')}`);
             process.exit(1);
           }
 
