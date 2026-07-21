@@ -126,7 +126,8 @@ export function parseConformanceConfig(yamlText) {
   const invalid = {};
   for (let i = start + 1; i < lines.length; i++) {
     const line = lines[i];
-    if (!/^\s+\S/.test(line)) break;
+    if (/^\s*$/.test(line) || /^\s*#/.test(line)) continue; // blank/comment lines don't end the block
+    if (!/^\s+\S/.test(line)) break; // next top-level key does
     const m = line.match(/^\s+([A-Za-z0-9_]+):\s*([A-Za-z]+)/);
     if (!m) continue;
     const [, key, level] = m;

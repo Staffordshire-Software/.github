@@ -84,6 +84,16 @@ test('parseConformanceConfig reads the flat checks block', () => {
   });
 });
 
+test('parseConformanceConfig scans past blank and comment lines inside the block', () => {
+  const cfg = parseConformanceConfig(
+    'checks:\n  a: required\n\n  # section two\n  b: warned\nother: x\n  c: required\n',
+  );
+  assert.deepEqual(cfg, {
+    checks: { a: 'required', b: 'warned' },
+    invalid: {},
+  });
+});
+
 test('parseConformanceConfig collects unknown levels as invalid', () => {
   const cfg = parseConformanceConfig(
     'checks:\n  a: requireded\n  b: required\n  c: bogus\n',
