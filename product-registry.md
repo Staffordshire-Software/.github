@@ -27,3 +27,4 @@ Rows the monitor appends for unregistered repos carry `?` metadata and stay
 | [haverford](https://github.com/Staffordshire-Software/haverford) | haverford | In development | In development | 🔴 |
 | [teacher-presell](https://github.com/Staffordshire-Software/teacher-presell) | teacher-presell | Marketing/Landing | Live | 🔴 |
 | [lattice](https://github.com/Staffordshire-Software/lattice) | lattice | Held | Held | 🔴 |
+| [musicos](https://github.com/Staffordshire-Software/musicos) | musicos | In development | In development | 🟡 |
