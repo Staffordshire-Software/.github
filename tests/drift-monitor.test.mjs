@@ -294,6 +294,21 @@ test('EXPECTED_CHECKS matches the shipped template .platform-conformance.yml', (
   );
 });
 
+test('the template platform-conformance workflow EXPECTED list stays in lockstep', () => {
+  const wf = readFileSync(
+    new URL('../templates/product-repo/.github/workflows/platform-conformance.yml', import.meta.url),
+    'utf8',
+  );
+  const block = wf.match(/const EXPECTED = \[([\s\S]*?)\];/);
+  assert.ok(block, 'workflow must define a const EXPECTED array');
+  const workflowKeys = [...block[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  assert.deepEqual(
+    workflowKeys.sort(),
+    [...EXPECTED_CHECKS].sort(),
+    'workflow EXPECTED must match the drift monitor EXPECTED_CHECKS',
+  );
+});
+
 test('buildReportBody lists red repos first and the full scan after', () => {
   const entries = [
     { org: 'Staffordshire-Software', repo: 'ok-repo', emoji: '🟢', reason: 'clean' },

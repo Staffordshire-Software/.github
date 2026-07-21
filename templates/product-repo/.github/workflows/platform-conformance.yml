@@ -39,11 +39,17 @@ jobs:
           // Every product repo must declare the full DoD checklist. Dropping a
           // key (rather than failing it) must not satisfy this gate.
           // TODO: sync from core#53 once the canonical checklist lands.
+          // Keep this list in lockstep with .platform-conformance.yml and the
+          // drift monitor's EXPECTED_CHECKS (one entry per DoD MUST). The check
+          // below asserts it matches the declared config exactly.
           const EXPECTED = [
             'auth_via_core_client', 'entitlements_via_core', 'no_committed_secrets',
-            'dependabot_enabled', 'security_headers', 'rate_limiting', 'sentry_wired',
-            'health_endpoint', 'reversible_migrations', 'analytics_via_core',
-            'ci_required_checks', 'mobile_responsive', 'accessibility_aa', 'docs_complete',
+            'dependabot_enabled', 'security_headers', 'rate_limiting', 'audit_log',
+            'sentry_wired', 'health_endpoint', 'uptime_monitor', 'reversible_migrations',
+            'analytics_via_core', 'legal_pages', 'gdpr_export_delete', 'support_inbox',
+            'ci_required_checks', 'preview_deploys', 'mobile_responsive', 'async_states',
+            'accessibility_aa', 'seo_basics', 'docs_complete', 'data_export',
+            'core_only_coupling', 'no_staffysoft_branding_in_db',
           ];
 
           // Minimal parse of the flat `checks:` block — one `key: level` pair
