@@ -10,6 +10,7 @@ import {
   buildReportBody,
   isPlaceholderRow,
   parseIgnoreList,
+  findRecentDriftIssue,
 } from '../scripts/drift-monitor.mjs';
 
 const SAMPLE = `# StaffySoft Product Registry
@@ -133,6 +134,21 @@ test('isPlaceholderRow flags any unfilled metadata column, not just product key'
   assert.equal(isPlaceholderRow({ ...filled, productKey: '?' }), true);
   assert.equal(isPlaceholderRow({ ...filled, category: '?' }), true);
   assert.equal(isPlaceholderRow({ ...filled, status: '?' }), true);
+});
+
+test('findRecentDriftIssue picks the newest report within 7 days regardless of state', () => {
+  const now = Date.parse('2026-07-21T12:00:00Z');
+  const day = 24 * 60 * 60 * 1000;
+  const issues = [
+    { title: 'Conformance drift report 2026-07-19', state: 'closed', number: 5, created_at: new Date(now - 2 * day).toISOString() },
+    { title: 'Conformance drift report 2026-07-16', state: 'open', number: 4, created_at: new Date(now - 5 * day).toISOString() },
+    { title: 'Conformance drift report 2026-07-10', state: 'open', number: 2, created_at: new Date(now - 11 * day).toISOString() },
+    { title: 'Unrelated issue', state: 'open', number: 3, created_at: new Date(now - 1 * day).toISOString() },
+    { title: 'Conformance drift report PR', state: 'open', number: 6, created_at: new Date(now).toISOString(), pull_request: {} },
+  ];
+  assert.equal(findRecentDriftIssue(issues, now).number, 5);
+  assert.equal(findRecentDriftIssue([issues[2]], now), null);
+  assert.equal(findRecentDriftIssue([], now), null);
 });
 
 test('parseIgnoreList splits, trims, and drops empties', () => {

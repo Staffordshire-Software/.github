@@ -251,24 +251,38 @@ async function scanRepo(token, org, repo) {
   return { org, repo, emoji, reason };
 }
 
+// Most recent "Conformance drift report" issue created within the last 7
+// days, in any state — a closed one still suppresses a new report so closing
+// an issue acknowledges it without inviting a duplicate the next morning.
+export function findRecentDriftIssue(issues, nowMs) {
+  const cutoff = nowMs - 7 * 24 * 60 * 60 * 1000;
+  return (
+    issues
+      .filter((i) => !i.pull_request && i.title.startsWith('Conformance drift report'))
+      .filter((i) => new Date(i.created_at).getTime() >= cutoff)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] ?? null
+  );
+}
+
 async function upsertDriftIssue(token, org, metaRepo, body, dateStr, dryRun) {
   const title = `Conformance drift report ${dateStr}`;
   if (dryRun) {
     console.log(`[dry-run] would open/update issue: ${title}`);
     return;
   }
-  const issues = (await gh(token, `/repos/${org}/${metaRepo}/issues?state=open&per_page=100`)) ?? [];
-  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const recent = issues
-    .filter((i) => !i.pull_request && i.title.startsWith('Conformance drift report'))
-    .filter((i) => new Date(i.created_at).getTime() >= cutoff)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-  if (recent) {
+  const issues =
+    (await gh(token, `/repos/${org}/${metaRepo}/issues?state=all&per_page=100`)) ?? [];
+  const recent = findRecentDriftIssue(issues, Date.now());
+  if (recent && recent.state === 'open') {
     await gh(token, `/repos/${org}/${metaRepo}/issues/${recent.number}`, {
       method: 'PATCH',
       body: { title, body },
     });
     console.log(`Updated drift issue #${recent.number}`);
+  } else if (recent) {
+    console.log(
+      `Drift issue #${recent.number} was closed within the last 7 days — not opening a duplicate.`,
+    );
   } else {
     const created = await gh(token, `/repos/${org}/${metaRepo}/issues`, {
       method: 'POST',

@@ -76,6 +76,7 @@ step "Creating $ORG/$SLUG (private)"
 gh repo create "$ORG/$SLUG" --private --description "$DESCRIPTION"
 
 step "Cloning into $WORK_DIR"
+mkdir -p "$(dirname "$WORK_DIR")"
 gh repo clone "$ORG/$SLUG" "$WORK_DIR"
 git -C "$WORK_DIR" checkout -B main
 
