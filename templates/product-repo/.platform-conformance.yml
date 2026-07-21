@@ -29,8 +29,19 @@ checks:
   sentry_wired: warned                # DoD §4 — errors to Sentry
   health_endpoint: warned             # DoD §4 — /api/health covers DB + core
   reversible_migrations: warned       # DoD §4 — every migration documents rollback
+  audit_log: warned                   # DoD §3 — audit log for billing/admin/entitlement changes
+  uptime_monitor: warned              # DoD §4 — uptime monitor pinging /api/health
   analytics_via_core: warned          # DoD §5 — trackEvent through core
+  legal_pages: warned                 # DoD §6 — Privacy Policy + ToS, linked in footer
+  gdpr_export_delete: warned          # DoD §6 — GDPR data export + delete via core SDK
+  support_inbox: warned               # DoD §6 — support routed to a human-read inbox
   ci_required_checks: warned          # DoD §7 — typecheck, lint, test, build on every PR
+  preview_deploys: warned             # DoD §7 — Vercel preview deploy per PR
   mobile_responsive: warned           # DoD §8 — phone-first responsive
+  async_states: warned                # DoD §8 — empty / loading / error states everywhere
   accessibility_aa: warned            # DoD §8 — WCAG AA contrast + keyboard nav
+  seo_basics: warned                  # DoD §8 — title, meta, OG, sitemap.xml, robots.txt
   docs_complete: warned               # DoD §9 — README, ADRs, RUNBOOK
+  data_export: warned                 # DoD §10 — export all user data as one archive
+  core_only_coupling: warned          # DoD §10 — cross-app coupling only via core-client
+  no_staffysoft_branding_in_db: warned # DoD §10 — no StaffySoft branding in schemas/data

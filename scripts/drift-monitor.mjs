@@ -128,26 +128,42 @@ export function appendUnregistered(markdown, org, repo) {
 // TODO: sync from core#53 once the canonical schema/parser lands.
 export const CHECK_LEVELS = ['required', 'warned', 'exempt'];
 
-// The full DoD checklist every product repo must declare. A repo that drops
-// one of these (e.g. deletes `auth_via_core_client`) is drift even if the
-// keys it kept are all `required` — otherwise the mechanism could be bypassed
-// by removing a check rather than failing it.
-// TODO: sync from core#53 once the canonical checklist lands.
+// The full DoD checklist every product repo must declare — one entry per MUST
+// item in DEFINITION_OF_DONE.md. A repo that drops one of these (e.g. deletes
+// `auth_via_core_client`) is drift even if the keys it kept are all
+// `required` — otherwise the mechanism could be bypassed by removing a check
+// rather than failing it. Because the shipped template declares every one of
+// these at `warned`, a repo cannot reach 🟢 until each MUST is individually
+// ratcheted to `required`, so a green status means the full MUST surface is
+// satisfied, not just a convenient subset.
+// TODO: sync from core#53 once the canonical checklist lands (exact key names
+// and any additions are reconciled there).
 export const EXPECTED_CHECKS = [
-  'auth_via_core_client',
-  'entitlements_via_core',
-  'no_committed_secrets',
-  'dependabot_enabled',
-  'security_headers',
-  'rate_limiting',
-  'sentry_wired',
-  'health_endpoint',
-  'reversible_migrations',
-  'analytics_via_core',
-  'ci_required_checks',
-  'mobile_responsive',
-  'accessibility_aa',
-  'docs_complete',
+  'auth_via_core_client', // §1
+  'entitlements_via_core', // §2
+  'no_committed_secrets', // §3
+  'dependabot_enabled', // §3
+  'security_headers', // §3
+  'rate_limiting', // §3
+  'audit_log', // §3
+  'sentry_wired', // §4
+  'health_endpoint', // §4
+  'uptime_monitor', // §4
+  'reversible_migrations', // §4
+  'analytics_via_core', // §5
+  'legal_pages', // §6
+  'gdpr_export_delete', // §6
+  'support_inbox', // §6
+  'ci_required_checks', // §7
+  'preview_deploys', // §7
+  'mobile_responsive', // §8
+  'async_states', // §8
+  'accessibility_aa', // §8
+  'seo_basics', // §8
+  'docs_complete', // §9
+  'data_export', // §10
+  'core_only_coupling', // §10
+  'no_staffysoft_branding_in_db', // §10
 ];
 
 // Expected checklist keys absent from a parsed config (declared under any
