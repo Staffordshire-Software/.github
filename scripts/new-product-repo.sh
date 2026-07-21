@@ -57,6 +57,7 @@ fi
 
 command -v gh >/dev/null || err "gh CLI is required (https://cli.github.com)"
 command -v git >/dev/null || err "git is required"
+command -v node >/dev/null || err "node is required (used to parse product-registry.md)"
 command -v npm >/dev/null || err "npm is required"
 gh auth status >/dev/null 2>&1 || err "gh is not authenticated — run 'gh auth login'"
 
