@@ -96,6 +96,19 @@ env PATH="$TMP/bin:$PATH" \
   exit 1
 }
 
+# --- negative: control characters in the description are rejected -----------
+echo "Asserting the script rejects control characters in the description..."
+if env PATH="$TMP/bin:$PATH" \
+    LOG_DIR="$LOG_DIR" FAKE_REMOTES="$FAKE_REMOTES" \
+    BOOTSTRAP_ORG="TestOrg" BOOTSTRAP_WORKDIR="$TMP/work/tabbed-app" \
+    bash "$TMP/meta/scripts/new-product-repo.sh" \
+    tabbed-app tabbed-key "$(printf 'has\ttab')" >/dev/null 2>&1; then
+  echo "  FAIL: script accepted a description containing a tab"
+  FAILURES=$((FAILURES + 1))
+else
+  echo "  ok: script rejects control characters in the description"
+fi
+
 # --- assertions -------------------------------------------------------------
 echo "Asserting on the pushed product repo..."
 git clone "$FAKE_REMOTES/demo-app.git" "$TMP/verify" 2>/dev/null

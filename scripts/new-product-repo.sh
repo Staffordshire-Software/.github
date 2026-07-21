@@ -48,9 +48,12 @@ DESCRIPTION="$3"
 [[ "$SLUG" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || err "repo slug '$SLUG' must be lowercase alphanumeric with dots/dashes"
 [[ "$PRODUCT_KEY" =~ ^[a-z0-9][a-z0-9-]*$ ]] || err "product key '$PRODUCT_KEY' must be lowercase alphanumeric with dashes"
 [ -n "$DESCRIPTION" ] || err "description must not be empty"
-case "$DESCRIPTION" in
-  *$'\n'*|*$'\r'*) err "description must be a single line" ;;
-esac
+# Reject every control character (tabs, newlines, CR, etc.). They can't appear
+# unescaped inside the generated JSON/YAML strings, so they would produce
+# invalid package.json / .platform-conformance.yml files.
+if [[ "$DESCRIPTION" =~ [[:cntrl:]] ]]; then
+  err "description must be a single line with no control characters (tabs, newlines, etc.)"
+fi
 
 command -v gh >/dev/null || err "gh CLI is required (https://cli.github.com)"
 command -v git >/dev/null || err "git is required"
