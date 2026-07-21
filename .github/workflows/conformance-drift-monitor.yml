@@ -1,0 +1,44 @@
+name: conformance-drift-monitor
+
+on:
+  schedule:
+    # Daily 08:00 UTC = 03:00 America/New_York during EDT (04:00 during EST —
+    # GitHub cron is UTC-only, so the local time shifts with DST).
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  drift-monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Scan org and update registry
+        env:
+          # DRIFT_MONITOR_TOKEN (org-read PAT) lets the scan see private repos
+          # across the org; the default token only sees this repo.
+          GITHUB_TOKEN: ${{ secrets.DRIFT_MONITOR_TOKEN || github.token }}
+          ORG: ${{ github.repository_owner }}
+          META_REPO: ${{ github.event.repository.name }}
+          REGISTRY_PATH: product-registry.md
+        run: node scripts/drift-monitor.mjs
+
+      - name: Commit registry changes
+        run: |
+          if git diff --quiet product-registry.md; then
+            echo "Registry unchanged."
+            exit 0
+          fi
+          git config user.name "staffysoft-drift-monitor[bot]"
+          git config user.email "danodeawebdev@gmail.com"
+          git add product-registry.md
+          git commit -m "chore: update conformance registry ($(date -u +%F))"
+          git push

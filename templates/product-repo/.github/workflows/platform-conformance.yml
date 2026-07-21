@@ -1,0 +1,77 @@
+# TODO: sync from core#53 — the canonical enforcement workflow is defined by
+# https://github.com/Staffordshire-Software/core/issues/53. This stub validates
+# .platform-conformance.yml and reports drift; swap in the canonical version
+# once core#53 merges.
+name: platform-conformance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  platform-conformance:
+    name: platform-conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate .platform-conformance.yml and report drift
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+
+          const CONFIG = '.platform-conformance.yml';
+          if (!fs.existsSync(CONFIG)) {
+            console.error(`::error::${CONFIG} is missing. Every StaffySoft product repo must declare its conformance levels.`);
+            process.exit(1);
+          }
+
+          const text = fs.readFileSync(CONFIG, 'utf8');
+          const LEVELS = ['required', 'warned', 'exempt'];
+
+          // Minimal parse of the flat `checks:` block — one `key: level` pair
+          // per line. The canonical parser arrives with core#53.
+          const lines = text.split('\n');
+          const start = lines.findIndex((l) => /^checks:\s*$/.test(l));
+          if (start === -1) {
+            console.error('::error::No `checks:` block found in .platform-conformance.yml');
+            process.exit(1);
+          }
+
+          const checks = {};
+          let invalid = false;
+          for (let i = start + 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (!/^\s+\S/.test(line)) break;
+            const m = line.match(/^\s+([A-Za-z0-9_]+):\s*([A-Za-z]+)/);
+            if (!m) continue;
+            const [, key, level] = m;
+            if (!LEVELS.includes(level)) {
+              console.error(`::error::Check \`${key}\` has invalid level \`${level}\` (expected one of ${LEVELS.join(', ')})`);
+              invalid = true;
+            }
+            checks[key] = level;
+          }
+
+          if (invalid) process.exit(1);
+          if (Object.keys(checks).length === 0) {
+            console.error('::error::`checks:` block is empty in .platform-conformance.yml');
+            process.exit(1);
+          }
+
+          // Stub enforcement: `required` checks are attested via the PR
+          // checklist until core#53 ships automated verification. Here we
+          // surface the declared levels so drift is visible in every run.
+          console.log('Platform conformance declaration:');
+          for (const [key, level] of Object.entries(checks)) {
+            const icon = level === 'required' ? '🟢' : level === 'warned' ? '🟡' : '⚪';
+            console.log(`  ${icon} ${key}: ${level}`);
+            if (level === 'warned') {
+              console.log(`::warning::Conformance check \`${key}\` is still at \`warned\` — ratchet to \`required\` before GA.`);
+            }
+          }
+          EOF

@@ -1,0 +1,31 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Drift monitor unit tests
+        run: node --test tests/*.test.mjs
+
+      - name: Bootstrap script integration test
+        run: bash tests/integration/new-product-repo.test.sh
+
+      - name: Shellcheck bootstrap script
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q shellcheck
+          shellcheck --severity=error scripts/new-product-repo.sh tests/integration/new-product-repo.test.sh
