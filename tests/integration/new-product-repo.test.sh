@@ -124,6 +124,10 @@ check "double quotes escaped in .yml (YAML string context)" \
   grep -qF '\"dquotes\"' "$TMP/verify/.platform-conformance.yml"
 check "package.json remains valid JSON after substitution" \
   node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$TMP/verify/package.json"
+check "scaffold .gitignore ignores every .env variant" \
+  bash -c 'cd "$1"; for f in .env .env.production .env.development .env.test .env.local; do git check-ignore -q "$f" || exit 1; done' _ "$TMP/verify"
+check "scaffold .gitignore keeps .env.example committable" \
+  bash -c 'cd "$1"; ! git check-ignore -q .env.example' _ "$TMP/verify"
 
 AUTHOR="$(git -C "$TMP/verify" log -1 --format='%an <%ae>')"
 check "commit authored by Dan O'Dea" test "$AUTHOR" = "Dan O'Dea <danodeawebdev@gmail.com>"

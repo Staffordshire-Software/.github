@@ -21,9 +21,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# env — secrets live in Vercel project env / 1Password, never in the repo
+# env — secrets live in Vercel project env / 1Password, never in the repo.
+# Ignore every .env variant (.env.production, .env.development, .env.test,
+# .env*.local, …); keep a committable .env.example for documenting keys.
 .env
-.env*.local
+.env.*
+!.env.example
 
 # vercel
 .vercel
