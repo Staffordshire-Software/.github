@@ -46,9 +46,11 @@ The script (requires an authenticated `gh` CLI):
   scans the org daily (03:00 America/New_York), recomputes each repo's
   🟢/🟡/🔴 conformance column, flags unregistered repos, and opens or updates a
   "Conformance drift report" issue here when anything is 🔴.
-  - The monitor uses the `DRIFT_MONITOR_TOKEN` secret (an org-read PAT) to see
-    private repos; without it, it falls back to the default workflow token and
-    only sees this repo.
+  - The monitor uses the `DRIFT_MONITOR_TOKEN` secret to see private repos
+    across the org. It needs org repo **read** and Issues **write** (the
+    monitor opens/updates drift issues); a read-only PAT will 403. Without the
+    secret it falls back to the default workflow token, which can write issues
+    but only sees this repo.
   - Non-product repos (currently just `core`) are excluded from the scan via
     the `IGNORE_REPOS` env in the workflow, so they are never flagged as
     unregistered.

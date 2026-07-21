@@ -19,6 +19,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
 
 const API = 'https://api.github.com';
 
@@ -128,7 +129,9 @@ export function parseConformanceConfig(yamlText) {
     const line = lines[i];
     if (/^\s*$/.test(line) || /^\s*#/.test(line)) continue; // blank/comment lines don't end the block
     if (!/^\s+\S/.test(line)) break; // next top-level key does
-    const m = line.match(/^\s+([A-Za-z0-9_]+):\s*([A-Za-z]+)/);
+    // Capture the whole value token (up to whitespace/comment) so malformed
+    // levels like `required-now` or `warned2` land in `invalid`, not `checks`.
+    const m = line.match(/^\s+([A-Za-z0-9_]+):\s*(\S+)/);
     if (!m) continue;
     const [, key, level] = m;
     if (CHECK_LEVELS.includes(level)) checks[key] = level;
@@ -346,7 +349,8 @@ async function main() {
 }
 
 const invokedDirectly =
-  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
 if (invokedDirectly) {
   main().catch((err) => {
     console.error(err);

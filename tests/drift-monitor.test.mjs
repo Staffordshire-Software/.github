@@ -105,6 +105,21 @@ test('parseConformanceConfig collects unknown levels as invalid', () => {
   });
 });
 
+test('parseConformanceConfig rejects valid-prefixed malformed levels', () => {
+  const cfg = parseConformanceConfig(
+    'checks:\n  a: required-now\n  b: warned2\n  c: exempt_but\n  d: required\n',
+  );
+  assert.deepEqual(cfg, {
+    checks: { d: 'required' },
+    invalid: { a: 'required-now', b: 'warned2', c: 'exempt_but' },
+  });
+});
+
+test('parseConformanceConfig keeps a trailing inline comment out of the level', () => {
+  const cfg = parseConformanceConfig('checks:\n  a: required   # DoD note\n');
+  assert.deepEqual(cfg, { checks: { a: 'required' }, invalid: {} });
+});
+
 test('parseConformanceConfig returns null without a checks block', () => {
   assert.equal(parseConformanceConfig('version: 1\n'), null);
   assert.equal(parseConformanceConfig('checks:\nno_indent: required\n'), null);
