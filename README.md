@@ -47,10 +47,11 @@ The script (requires an authenticated `gh` CLI):
   🟢/🟡/🔴 conformance column, flags unregistered repos, and opens or updates a
   "Conformance drift report" issue here when anything is 🔴.
   - The monitor uses the `DRIFT_MONITOR_TOKEN` secret to see private repos
-    across the org. It needs org repo **read** and Issues **write** (the
-    monitor opens/updates drift issues); a read-only PAT will 403. Without the
-    secret it falls back to the default workflow token, which can write issues
-    but only sees this repo.
+    across the org. On private repos it needs **Contents: read** (config +
+    repo listing), **Actions: read** (platform-conformance run status), and
+    **Issues: write** (drift report); a token missing any of these 403s and
+    aborts the scan. Without the secret it falls back to the default workflow
+    token, which the workflow grants those same scopes, but only sees this repo.
   - Non-product repos (currently just `core`) are excluded from the scan via
     the `IGNORE_REPOS` env in the workflow, so they are never flagged as
     unregistered.
