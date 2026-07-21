@@ -93,6 +93,17 @@ test('computeEmoji: missing config or workflow, or failing main, is red', () => 
   assert.equal(computeEmoji({ config, workflowPresent: true, latestConclusion: 'failure' }), '🔴');
 });
 
+test('computeEmoji: any non-success conclusion is red, including no runs at all', () => {
+  const config = { checks: { a: 'required' } };
+  for (const latestConclusion of [null, 'cancelled', 'timed_out', 'action_required']) {
+    assert.equal(
+      computeEmoji({ config, workflowPresent: true, latestConclusion }),
+      '🔴',
+      `latestConclusion=${latestConclusion} should be red`,
+    );
+  }
+});
+
 test('computeEmoji: warned drift is yellow, all-required clean is green', () => {
   assert.equal(
     computeEmoji({
@@ -125,6 +136,15 @@ test('buildReportBody lists red repos first and the full scan after', () => {
   assert.match(redSection, /rogue/);
   assert.doesNotMatch(redSection, /- \[ok-repo\]/);
   assert.match(body.split('## Full scan')[1], /ok-repo/);
+});
+
+test('buildReportBody links the registry using the provided org/meta-repo/path', () => {
+  const body = buildReportBody(
+    [{ org: 'MyOrg', repo: 'a', emoji: '🔴', reason: 'config missing' }],
+    '2026-07-21',
+    { org: 'MyOrg', metaRepo: 'meta', registryPath: 'registry.md' },
+  );
+  assert.match(body, /https:\/\/github\.com\/MyOrg\/meta\/blob\/main\/registry\.md/);
 });
 
 test('buildReportBody with no red entries says none', () => {

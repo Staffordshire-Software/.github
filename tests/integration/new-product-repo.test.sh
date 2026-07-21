@@ -89,7 +89,7 @@ env PATH="$TMP/bin:$PATH" \
     LOG_DIR="$LOG_DIR" FAKE_REMOTES="$FAKE_REMOTES" \
     BOOTSTRAP_ORG="TestOrg" BOOTSTRAP_WORKDIR="$TMP/work/demo-app" \
     bash "$TMP/meta/scripts/new-product-repo.sh" \
-    demo-app demo-key "A demo app with 'quotes' & ampersands" \
+    demo-app demo-key "A demo app with 'quotes', \"dquotes\" & ampersands" \
     > "$LOG_DIR/bootstrap.log" 2>&1 || {
   echo "FAIL: bootstrap script exited non-zero"
   cat "$LOG_DIR/bootstrap.log"
@@ -115,8 +115,14 @@ check "no unsubstituted placeholders remain" \
   bash -c '! grep -rI "{{REPO_SLUG}}\|{{PRODUCT_KEY}}\|{{DESCRIPTION}}" "$0" --exclude-dir=.git' "$TMP/verify"
 check "slug substituted into package.json" grep -q '"name": "demo-app"' "$TMP/verify/package.json"
 check "product key substituted into conformance config" grep -q 'key: "demo-key"' "$TMP/verify/.platform-conformance.yml"
-check "description (with quotes/&) substituted into README" \
-  grep -qF "A demo app with 'quotes' & ampersands" "$TMP/verify/README.md"
+check "description substituted verbatim into README (markdown)" \
+  grep -qF "A demo app with 'quotes', \"dquotes\" & ampersands" "$TMP/verify/README.md"
+check "single quotes escaped in .tsx (TS string context)" \
+  grep -qF "with \\'quotes\\'" "$TMP/verify/app/layout.tsx"
+check "double quotes escaped in .yml (YAML string context)" \
+  grep -qF '\"dquotes\"' "$TMP/verify/.platform-conformance.yml"
+check "package.json remains valid JSON after substitution" \
+  node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$TMP/verify/package.json"
 
 AUTHOR="$(git -C "$TMP/verify" log -1 --format='%an <%ae>')"
 check "commit authored by Dan O'Dea" test "$AUTHOR" = "Dan O'Dea <danodeawebdev@gmail.com>"

@@ -80,15 +80,25 @@ step "Copying templates from $TEMPLATE_DIR"
 cp -R "$TEMPLATE_DIR/." "$WORK_DIR/"
 
 step "Substituting placeholders"
-# Escape sed replacement metacharacters (&, \, and the | delimiter).
-esc() { printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'; }
-E_SLUG="$(esc "$SLUG")"; E_KEY="$(esc "$PRODUCT_KEY")"; E_DESC="$(esc "$DESCRIPTION")"
+# Slug and product key are validated to safe charsets above. The free-text
+# description is escaped per target syntax: templates emit it inside
+# single-quoted strings in .ts/.tsx and double-quoted strings in .json/.yml,
+# so quotes and backslashes must not break the generated file.
+esc_sed() { printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'; }
+DESC_TS="$(printf '%s' "$DESCRIPTION" | sed -e 's/\\/\\\\/g' -e "s/'/\\\\'/g")"
+DESC_DQ="$(printf '%s' "$DESCRIPTION" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+E_SLUG="$(esc_sed "$SLUG")"; E_KEY="$(esc_sed "$PRODUCT_KEY")"
 find "$WORK_DIR" -type f -not -path "$WORK_DIR/.git/*" | while IFS= read -r f; do
   if grep -qI '{{' "$f" 2>/dev/null; then
+    case "$f" in
+      *.ts|*.tsx)          desc="$DESC_TS" ;;
+      *.json|*.yml|*.yaml) desc="$DESC_DQ" ;;
+      *)                   desc="$DESCRIPTION" ;;
+    esac
     sed_inplace \
       -e "s|{{REPO_SLUG}}|$E_SLUG|g" \
       -e "s|{{PRODUCT_KEY}}|$E_KEY|g" \
-      -e "s|{{DESCRIPTION}}|$E_DESC|g" \
+      -e "s|{{DESCRIPTION}}|$(esc_sed "$desc")|g" \
       "$f"
   fi
 done
@@ -125,6 +135,11 @@ gh api "repos/$ORG/$SLUG/branches/main/protection" \
 JSON
 
 step "Registering in product-registry.md"
+# Preflight: only auto-commit the registry when the meta checkout is on main
+# with nothing staged/modified, so we never commit onto the wrong branch or
+# sweep unrelated changes into the registry commit.
+META_BRANCH="$(git -C "$META_ROOT" rev-parse --abbrev-ref HEAD)"
+META_DIRTY="$(git -C "$META_ROOT" status --porcelain --untracked-files=no)"
 if grep -q "^| \[$SLUG\]" "$REGISTRY"; then
   echo "  $SLUG already registered — skipping"
 else
@@ -142,14 +157,19 @@ else
     }
   ' "$REGISTRY" > "$REGISTRY.tmp" && mv "$REGISTRY.tmp" "$REGISTRY"
   rm -f "$REGISTRY.row"
-  git -C "$META_ROOT" add "$(basename "$REGISTRY")"
-  git -C "$META_ROOT" \
-    -c user.name="$GIT_AUTHOR" -c user.email="$GIT_EMAIL" \
-    commit -m "chore: register $SLUG in product registry" \
-    --author="$GIT_AUTHOR <$GIT_EMAIL>"
-  if [ "${BOOTSTRAP_SKIP_REGISTRY_PUSH:-0}" != "1" ]; then
-    git -C "$META_ROOT" push || \
-      echo "  warning: could not push registry update — push $META_ROOT manually"
+  if [ "$META_BRANCH" != "main" ] || [ -n "$META_DIRTY" ]; then
+    echo "  warning: meta repo not clean on main (branch: $META_BRANCH${META_DIRTY:+, uncommitted changes present})"
+    echo "  product-registry.md was updated locally — commit and push it manually"
+  else
+    git -C "$META_ROOT" add "$(basename "$REGISTRY")"
+    git -C "$META_ROOT" \
+      -c user.name="$GIT_AUTHOR" -c user.email="$GIT_EMAIL" \
+      commit -m "chore: register $SLUG in product registry" \
+      --author="$GIT_AUTHOR <$GIT_EMAIL>"
+    if [ "${BOOTSTRAP_SKIP_REGISTRY_PUSH:-0}" != "1" ]; then
+      git -C "$META_ROOT" push || \
+        echo "  warning: could not push registry update — push $META_ROOT manually"
+    fi
   fi
 fi
 

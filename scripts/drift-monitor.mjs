@@ -110,24 +110,31 @@ export function parseConformanceConfig(yamlText) {
   return Object.keys(checks).length ? { checks } : null;
 }
 
-// 🔴 config or workflow missing, or workflow failing on main.
+// 🔴 config or workflow missing, or the latest run on main did not succeed
+//    (failure, cancelled, timed_out, action_required, still running, or no
+//    runs at all — anything but an explicit `success` is drift).
 // 🟡 workflow green but some checks still `warned` (warned drift).
 // 🟢 workflow green and every check `required` (or `exempt`).
 export function computeEmoji({ config, workflowPresent, latestConclusion }) {
   if (!config) return '🔴';
   if (!workflowPresent) return '🔴';
-  if (latestConclusion === 'failure') return '🔴';
+  if (latestConclusion !== 'success') return '🔴';
   const levels = Object.values(config.checks);
   if (levels.some((l) => l === 'warned')) return '🟡';
   return '🟢';
 }
 
-export function buildReportBody(entries, dateStr) {
+export function buildReportBody(entries, dateStr, opts = {}) {
+  const {
+    org = entries[0]?.org ?? 'Staffordshire-Software',
+    metaRepo = '.github',
+    registryPath = 'product-registry.md',
+  } = opts;
   const red = entries.filter((e) => e.emoji.startsWith('🔴'));
   const lines = [
     `Automated conformance drift report for ${dateStr}.`,
     '',
-    `Registry: [product-registry.md](https://github.com/${entries[0]?.org ?? 'Staffordshire-Software'}/.github/blob/main/product-registry.md)`,
+    `Registry: [${registryPath}](https://github.com/${org}/${metaRepo}/blob/main/${registryPath})`,
     '',
     '## 🔴 Repos with required drift',
     '',
@@ -196,14 +203,15 @@ async function scanRepo(token, org, repo) {
   const latestConclusion = runs?.workflow_runs?.[0]?.conclusion ?? null;
 
   const emoji = computeEmoji({ config, workflowPresent, latestConclusion });
+  // Keep this chain aligned with computeEmoji: same conditions, same order.
   const reason = !configText
     ? '.platform-conformance.yml missing'
     : !config
       ? '.platform-conformance.yml has no valid checks block'
       : !workflowPresent
         ? 'platform-conformance workflow missing'
-        : latestConclusion === 'failure'
-          ? 'platform-conformance failing on main'
+        : latestConclusion !== 'success'
+          ? `platform-conformance not passing on main (latest: ${latestConclusion ?? 'no runs'})`
           : emoji === '🟡'
             ? 'warned drift (checks still at `warned`)'
             : 'clean';
@@ -277,7 +285,8 @@ async function main() {
 
   const hasRed = entries.some((e) => e.emoji.startsWith('🔴'));
   if (hasRed) {
-    await upsertDriftIssue(token, org, metaRepo, buildReportBody(entries, dateStr), dateStr, dryRun);
+    const body = buildReportBody(entries, dateStr, { org, metaRepo, registryPath });
+    await upsertDriftIssue(token, org, metaRepo, body, dateStr, dryRun);
   } else {
     console.log('No 🔴 rows — skipping drift issue.');
   }
