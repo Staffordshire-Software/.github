@@ -112,9 +112,10 @@ for f in \
 done
 
 check "no unsubstituted placeholders remain" \
-  bash -c '! grep -rI --exclude-dir=.git -e "{{REPO_SLUG}}" -e "{{PRODUCT_KEY}}" -e "{{DESCRIPTION}}" "$1"' _ "$TMP/verify"
+  bash -c '! grep -rI --exclude-dir=.git -e "{{ORG}}" -e "{{REPO_SLUG}}" -e "{{PRODUCT_KEY}}" -e "{{DESCRIPTION}}" "$1"' _ "$TMP/verify"
 check "slug substituted into package.json" grep -q '"name": "demo-app"' "$TMP/verify/package.json"
 check "product key substituted into conformance config" grep -q 'key: "demo-key"' "$TMP/verify/.platform-conformance.yml"
+check "org substituted into conformance repo field" grep -q 'repo: "TestOrg/demo-app"' "$TMP/verify/.platform-conformance.yml"
 check "description substituted verbatim into README (markdown)" \
   grep -qF "A demo app with 'quotes', \"dquotes\" & ampersands" "$TMP/verify/README.md"
 check "single quotes escaped in .tsx (TS string context)" \

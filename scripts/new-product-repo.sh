@@ -91,7 +91,7 @@ step "Substituting placeholders"
 esc_sed() { printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'; }
 DESC_TS="$(printf '%s' "$DESCRIPTION" | sed -e 's/\\/\\\\/g' -e "s/'/\\\\'/g")"
 DESC_DQ="$(printf '%s' "$DESCRIPTION" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
-E_SLUG="$(esc_sed "$SLUG")"; E_KEY="$(esc_sed "$PRODUCT_KEY")"
+E_SLUG="$(esc_sed "$SLUG")"; E_KEY="$(esc_sed "$PRODUCT_KEY")"; E_ORG="$(esc_sed "$ORG")"
 find "$WORK_DIR" -type f -not -path "$WORK_DIR/.git/*" | while IFS= read -r f; do
   if grep -qI '{{' "$f" 2>/dev/null; then
     case "$f" in
@@ -100,6 +100,7 @@ find "$WORK_DIR" -type f -not -path "$WORK_DIR/.git/*" | while IFS= read -r f; d
       *)                   desc="$DESCRIPTION" ;;
     esac
     sed_inplace \
+      -e "s|{{ORG}}|$E_ORG|g" \
       -e "s|{{REPO_SLUG}}|$E_SLUG|g" \
       -e "s|{{PRODUCT_KEY}}|$E_KEY|g" \
       -e "s|{{DESCRIPTION}}|$(esc_sed "$desc")|g" \

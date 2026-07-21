@@ -16,7 +16,7 @@ version: 1
 
 product:
   key: "{{PRODUCT_KEY}}"
-  repo: "Staffordshire-Software/{{REPO_SLUG}}"
+  repo: "{{ORG}}/{{REPO_SLUG}}"
   description: "{{DESCRIPTION}}"
 
 checks:
