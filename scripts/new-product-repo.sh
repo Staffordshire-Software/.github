@@ -149,10 +149,27 @@ step "Registering in product-registry.md"
 # sweep unrelated changes into the registry commit.
 META_BRANCH="$(git -C "$META_ROOT" rev-parse --abbrev-ref HEAD)"
 META_DIRTY="$(git -C "$META_ROOT" status --porcelain --untracked-files=no)"
-# Fixed-string match — slugs may contain dots, which grep would otherwise
-# treat as regex wildcards.
-if grep -qF "| [$SLUG](" "$REGISTRY"; then
+# Detect an existing registration with the same parser the drift monitor
+# uses, so link-cell / plain-cell / spacing variants are all matched
+# consistently (a plain grep would miss the plain-cell rows parseRegistry
+# accepts, and could append a duplicate). rc: 0 = present, 1 = absent,
+# other = parse/read error (abort rather than risk a bad edit).
+set +e
+node -e '
+const fs = require("fs");
+import(process.argv[1])
+  .then(({ parseRegistry }) => {
+    const rows = parseRegistry(fs.readFileSync(process.argv[2], "utf8"));
+    process.exit(rows.some((r) => r.repo === process.argv[3]) ? 0 : 1);
+  })
+  .catch((err) => { console.error(err); process.exit(2); });
+' "$META_ROOT/scripts/drift-monitor.mjs" "$REGISTRY" "$SLUG"
+REGISTERED_RC=$?
+set -e
+if [ "$REGISTERED_RC" -eq 0 ]; then
   echo "  $SLUG already registered — skipping"
+elif [ "$REGISTERED_RC" -ne 1 ]; then
+  err "could not check product-registry.md for $SLUG (node exit $REGISTERED_RC)"
 else
   # Append the row directly after the last table row.
   printf '| [%s](https://github.com/%s/%s) | %s | In development | In development | 🟡 |\n' \
