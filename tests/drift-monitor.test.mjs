@@ -84,6 +84,36 @@ test('appendUnregistered does not duplicate an existing row', () => {
   assert.equal(updated, SAMPLE);
 });
 
+test('appendUnregistered appends after the separator when the table has no data rows', () => {
+  const empty = [
+    '# Registry',
+    '',
+    '| Repo | Product key | Category | Status | Conformance |',
+    '|---|---|---|---|---|',
+    '',
+    'Trailing prose.',
+    '',
+  ].join('\n');
+  const updated = appendUnregistered(empty, 'Staffordshire-Software', 'first-repo');
+  const rows = parseRegistry(updated);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].repo, 'first-repo');
+  assert.equal(rows[0].conformance, '🔴 unregistered');
+  assert.ok(updated.indexOf('first-repo') < updated.indexOf('Trailing prose.'));
+});
+
+test('appendUnregistered tolerates a separator row without a trailing pipe', () => {
+  // parseRegistry requires a leading pipe but not a trailing one; the append
+  // fallback must match the same set of separators it does.
+  const empty = [
+    '| Repo | Product key | Category | Status | Conformance',
+    '|--- | :---: | --- | --- | ---',
+  ].join('\n');
+  const updated = appendUnregistered(empty, 'Staffordshire-Software', 'first-repo');
+  assert.equal(parseRegistry(updated).length, 1);
+  assert.equal(parseRegistry(updated)[0].repo, 'first-repo');
+});
+
 test('parseConformanceConfig reads the flat checks block', () => {
   const cfg = parseConformanceConfig(
     'version: 1\nchecks:\n  auth_via_core_client: warned\n  sentry_wired: required\nother:\n  nope: x\n',

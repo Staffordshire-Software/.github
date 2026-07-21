@@ -99,14 +99,23 @@ export function parseIgnoreList(value) {
   );
 }
 
+// A markdown table separator row (the `---|---` underline). Tolerant of the
+// same formats parseRegistry accepts: outer pipes optional, alignment colons
+// and spaces allowed. Must contain a pipe and a dash and nothing else.
+function isSeparatorRow(line) {
+  return /\|/.test(line) && /-/.test(line) && /^[\s|:-]+$/.test(line);
+}
+
 // Append a row for a repo that exists in the org but not in the registry.
 export function appendUnregistered(markdown, org, repo) {
   const lines = markdown.split('\n');
   const rows = parseRegistry(markdown);
   if (rows.some((r) => r.repo === repo)) return markdown;
+  // With data rows, append after the last one; otherwise (header + separator
+  // only) append right after the separator underline.
   const lastLine = rows.length
     ? rows[rows.length - 1].lineIndex
-    : lines.findIndex((l) => /^\s*\|[-: |]+\|\s*$/.test(l));
+    : lines.findIndex(isSeparatorRow);
   if (lastLine === -1) return markdown;
   const row = `| [${repo}](https://github.com/${org}/${repo}) | ? | ? | ? | 🔴 unregistered |`;
   lines.splice(lastLine + 1, 0, row);
